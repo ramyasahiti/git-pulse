@@ -40,4 +40,3 @@ def team_pulse(days: int = Query(7, le=30)):
 @app.get("/health")
 def health():
     return {"status": "ok"}
-

@@ -42,3 +42,4 @@ def process(event: dict):
 print("Consumer running...")
 for msg in consumer:
     process(msg.value)
+    
