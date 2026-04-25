@@ -2,14 +2,27 @@ from flask import Flask, request, jsonify
 from kafka import KafkaProducer
 import json
 import os
+import time
 
 
 app = Flask(__name__)
 
-producer = KafkaProducer(
-    bootstrap_servers=os.getenv("KAFKA_BROKER", "localhost:9092"),
-    value_serializer=lambda v: json.dumps(v).encode("utf-8")
-)
+
+def create_producer():
+    retries = 10
+    for i in range(retries):
+        try:
+            return KafkaProducer(
+                bootstrap_servers=os.getenv("KAFKA_BROKER", "localhost:9092"),
+                value_serializer=lambda v: json.dumps(v).encode("utf-8")
+            )
+        except Exception as e:
+            print(f"Kafka not ready, retrying ({i+1}/{retries})...")
+            time.sleep(5)
+    raise Exception("Could not connect to Kafka after retries")
+
+
+producer = create_producer()
 
 
 @app.route("/webhook", methods=["POST"])
