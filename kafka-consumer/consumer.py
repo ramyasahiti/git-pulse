@@ -26,9 +26,7 @@ def process(event: dict):
     actor = event.get("actor")
     event_type = event.get("event", "unknown")
     score = SCORES.get(event_type, 1)
-
     db.events.insert_one({**event, "timestamp": datetime.now(timezone.utc)})
-
     db.leaderboard.update_one(
         {"username": actor},
         {
@@ -38,7 +36,7 @@ def process(event: dict):
         },
         upsert=True
     )
-    print(f"[+] {actor} → {event_type} (+{score} pts)")
+    print(f"[+] {actor} -> {event_type} (+{score} pts)")
 
 
 print("Consumer running...")

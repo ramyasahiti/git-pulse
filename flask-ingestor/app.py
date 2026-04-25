@@ -14,17 +14,15 @@ producer = KafkaProducer(
 
 @app.route("/webhook", methods=["POST"])
 def receive_webhook():
-    """GitHub sends events here (push, PR, review)."""
+    """GitHub sends events here."""
     event_type = request.headers.get("X-GitHub-Event", "unknown")
     payload = request.json or {}
-
     message = {
         "event": event_type,
         "repo": payload.get("repository", {}).get("full_name"),
         "actor": payload.get("sender", {}).get("login"),
         "payload": payload
     }
-
     producer.send("git-events", value=message)
     producer.flush()
     return jsonify({"status": "queued", "event": event_type}), 200
