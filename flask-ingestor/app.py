@@ -16,7 +16,7 @@ def create_producer():
                 bootstrap_servers=os.getenv("KAFKA_BROKER", "localhost:9092"),
                 value_serializer=lambda v: json.dumps(v).encode("utf-8")
             )
-        except Exception as e:
+        except Exception:
             print(f"Kafka not ready, retrying ({i+1}/{retries})...")
             time.sleep(5)
     raise Exception("Could not connect to Kafka after retries")
