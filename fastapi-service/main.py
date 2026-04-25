@@ -36,6 +36,7 @@ def team_pulse(days: int = Query(7, le=30)):
     active_devs = db.events.distinct("actor", {"timestamp": {"$gte": since}})
     return {"days": days, "total_events": total, "active_developers": len(active_devs)}
 
+
 @app.get("/stats")
 def get_stats(days: int = Query(7, le=30)):
     """Daily stats for the last N days."""
