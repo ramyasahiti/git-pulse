@@ -26,7 +26,9 @@ def process(event: dict):
     actor = event.get("actor")
     event_type = event.get("event", "unknown")
     score = SCORES.get(event_type, 1)
+
     db.events.insert_one({**event, "timestamp": datetime.now(timezone.utc)})
+
     db.leaderboard.update_one(
         {"username": actor},
         {
@@ -36,10 +38,20 @@ def process(event: dict):
         },
         upsert=True
     )
+
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    db.stats.update_one(
+        {"date": today},
+        {
+            "$inc": {
+                "total_events": 1,
+                f"total_{event_type}s": 1
+            },
+            "$addToSet": {"active_developers": actor},
+            "$setOnInsert": {"date": today}
+        },
+        upsert=True
+    )
+
     print(f"[+] {actor} -> {event_type} (+{score} pts)")
-
-
-print("Consumer running...")
-for msg in consumer:
-    process(msg.value)
     
