@@ -3,19 +3,31 @@ from pymongo import MongoClient
 from datetime import datetime, timezone
 import json
 import os
+import time
 
 
 KAFKA_BROKER = os.getenv("KAFKA_BROKER", "localhost:9092")
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
 
-consumer = KafkaConsumer(
-    "git-events",
-    bootstrap_servers=KAFKA_BROKER,
-    value_deserializer=lambda m: json.loads(m.decode("utf-8")),
-    auto_offset_reset="earliest",
-    group_id="git-pulse-group"
-)
 
+def create_consumer():
+    retries = 10
+    for i in range(retries):
+        try:
+            return KafkaConsumer(
+                "git-events",
+                bootstrap_servers=KAFKA_BROKER,
+                value_deserializer=lambda m: json.loads(m.decode("utf-8")),
+                auto_offset_reset="earliest",
+                group_id="git-pulse-group"
+            )
+        except Exception:
+            print(f"Kafka not ready, retrying ({i+1}/{retries})...")
+            time.sleep(5)
+    raise Exception("Could not connect to Kafka after retries")
+
+
+consumer = create_consumer()
 mongo = MongoClient(MONGO_URI)
 db = mongo["gitpulse"]
 
@@ -54,4 +66,8 @@ def process(event: dict):
     )
 
     print(f"[+] {actor} -> {event_type} (+{score} pts)")
-    
+
+
+print("Consumer running...")
+for msg in consumer:
+    process(msg.value)
