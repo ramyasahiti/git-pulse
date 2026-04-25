@@ -1,6 +1,8 @@
 from flask import Flask, request, jsonify
 from kafka import KafkaProducer
-import json, os
+import json
+import os
+
 
 app = Flask(__name__)
 
@@ -8,6 +10,7 @@ producer = KafkaProducer(
     bootstrap_servers=os.getenv("KAFKA_BROKER", "localhost:9092"),
     value_serializer=lambda v: json.dumps(v).encode("utf-8")
 )
+
 
 @app.route("/webhook", methods=["POST"])
 def receive_webhook():
@@ -26,9 +29,11 @@ def receive_webhook():
     producer.flush()
     return jsonify({"status": "queued", "event": event_type}), 200
 
+
 @app.route("/health")
 def health():
     return jsonify({"status": "ok"})
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
