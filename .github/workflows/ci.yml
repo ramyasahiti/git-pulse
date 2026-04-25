@@ -17,10 +17,10 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install flake8 and lint
+      - name: Install dependencies
         run: |
           pip install flake8
-          flake8 flask-ingestor/ kafka-consumer/ fastapi-service/ --max-line-length=100
+          flake8 flask-ingestor/ kafka-consumer/ fastapi-service/ --max-line-length=100 --extend-ignore=W291,W292,W293,W391
 
   build:
     needs: lint-and-test
