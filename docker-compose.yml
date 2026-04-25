@@ -1,0 +1,50 @@
+version: "3.8"
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    depends_on: [zookeeper]
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  mongo:
+    image: mongo:6.0
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+  flask-ingestor:
+    build: ./flask-ingestor
+    ports:
+      - "5000:5000"
+    depends_on: [kafka]
+    environment:
+      KAFKA_BROKER: kafka:9092
+
+  kafka-consumer:
+    build: ./kafka-consumer
+    depends_on: [kafka, mongo]
+    environment:
+      KAFKA_BROKER: kafka:9092
+      MONGO_URI: mongodb://mongo:27017
+
+  fastapi-service:
+    build: ./fastapi-service
+    ports:
+      - "8000:8000"
+    depends_on: [mongo]
+    environment:
+      MONGO_URI: mongodb://mongo:27017
+
+volumes:
+  mongo-data:
