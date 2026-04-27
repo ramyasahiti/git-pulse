@@ -27,15 +27,33 @@ producer = create_producer()
 
 @app.route("/webhook", methods=["POST"])
 def receive_webhook():
-    """GitHub sends events here."""
+    """Receive GitHub webhook events."""
     event_type = request.headers.get("X-GitHub-Event", "unknown")
     payload = request.json or {}
+    repo = payload.get("repository", {}).get("full_name")
+    actor = payload.get("sender", {}).get("login")
+
     message = {
         "event": event_type,
-        "repo": payload.get("repository", {}).get("full_name"),
-        "actor": payload.get("sender", {}).get("login"),
+        "repo": repo,
+        "actor": actor,
         "payload": payload
     }
+
+    if event_type == "pull_request":
+        action = payload.get("action")
+        pr_number = payload.get("number")
+        if action == "opened":
+            message["pr_action"] = "opened"
+            message["pr_number"] = pr_number
+        elif action == "closed" and payload.get("pull_request", {}).get("merged"):
+            message["pr_action"] = "merged"
+            message["pr_number"] = pr_number
+
+    if event_type == "pull_request_review":
+        message["pr_number"] = payload.get("pull_request", {}).get("number")
+        message["reviewed_by"] = actor
+
     producer.send("git-events", value=message)
     producer.flush()
     return jsonify({"status": "queued", "event": event_type}), 200

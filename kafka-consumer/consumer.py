@@ -37,6 +37,7 @@ SCORES = {"push": 10, "pull_request": 20, "pull_request_review": 15, "unknown": 
 def process(event: dict):
     actor = event.get("actor")
     event_type = event.get("event", "unknown")
+    repo = event.get("repo")
     score = SCORES.get(event_type, 1)
 
     db.events.insert_one({**event, "timestamp": datetime.now(timezone.utc)})
@@ -64,6 +65,46 @@ def process(event: dict):
         },
         upsert=True
     )
+
+    if event_type == "pull_request":
+        pr_action = event.get("pr_action")
+        pr_number = event.get("pr_number")
+        if pr_action == "opened":
+            db.pr_timings.update_one(
+                {"repo": repo, "pr_number": pr_number},
+                {
+                    "$set": {
+                        "opened_by": actor,
+                        "opened_at": datetime.now(timezone.utc),
+                        "repo": repo
+                    },
+                    "$setOnInsert": {"pr_number": pr_number}
+                },
+                upsert=True
+            )
+        elif pr_action == "merged":
+            pr = db.pr_timings.find_one({"repo": repo, "pr_number": pr_number})
+            if pr and pr.get("opened_at"):
+                diff = datetime.now(timezone.utc) - pr["opened_at"]
+                review_hours = round(diff.total_seconds() / 3600, 2)
+                db.pr_timings.update_one(
+                    {"repo": repo, "pr_number": pr_number},
+                    {"$set": {
+                        "merged_at": datetime.now(timezone.utc),
+                        "review_time_hours": review_hours
+                    }}
+                )
+
+    if event_type == "pull_request_review":
+        pr_number = event.get("pr_number")
+        reviewed_by = event.get("reviewed_by")
+        db.pr_timings.update_one(
+            {"repo": repo, "pr_number": pr_number},
+            {"$set": {
+                "reviewed_by": reviewed_by,
+                "reviewed_at": datetime.now(timezone.utc)
+            }}
+        )
 
     print(f"[+] {actor} -> {event_type} (+{score} pts)")
 
